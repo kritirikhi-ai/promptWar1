@@ -41,7 +41,7 @@ init_logging()
 class AppConfig:
     """Immutable application configuration with secure defaults."""
 
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
     MAX_TEXT_LENGTH: int = 5000
     MAX_FILE_SIZE_MB: int = 10
     RATE_LIMIT_WINDOW: int = 60
