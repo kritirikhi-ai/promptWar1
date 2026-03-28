@@ -25,9 +25,7 @@ from google.genai import types
 # ---------------------------------------------------------------------------
 load_dotenv()
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-if not GEMINI_API_KEY:
-    logging.warning("GEMINI_API_KEY not set — API calls will fail.")
+GEMINI_API_KEY = "AIzaSyDJJl0w2nSqfIEtiffIeiuiz5hyOQjEA4M"
 
 MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 MAX_TEXT_LENGTH = 5000
