@@ -4,12 +4,21 @@ services.py
 Centralised Google Cloud service integrations with fallbacks.
 Includes Gemini, Firestore, Cloud Storage, Secret Manager, Translation, BigQuery,
 DLP, Text-to-Speech (TTS), Speech-to-Text (STT), and Google Maps.
+
+Optimised for efficiency with:
+- Lazy client initialisation (clients created on first use, not import)
+- In-memory GCS upload (avoids temp file I/O for TTS bytes)
+- LRU-cached geocoding (avoids redundant Maps API calls for same location)
+- Thread-safe singleton pattern
 """
 
+import datetime
+import io
 import logging
 import os
-import datetime
+import threading
 from collections import deque
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
 
 from google.cloud import firestore as cloud_firestore
@@ -27,8 +36,13 @@ from config import CONFIG
 
 logger = logging.getLogger("triageai.services")
 
+
 class GoogleServices:
-    """Manages 12 Google Cloud/Maps service connections and fallbacks."""
+    """Manages 12 Google Cloud/Maps service connections with lazy init and fallbacks.
+
+    Clients are initialised on first use rather than eagerly at import time,
+    reducing cold-start latency and memory usage when services are unavailable.
+    """
 
     def __init__(self) -> None:
         self._gemini_client: Optional[genai.Client] = None
@@ -40,84 +54,129 @@ class GoogleServices:
         self._speech_client: Optional[Any] = None
         self._tts_client: Optional[Any] = None
         self._maps_client: Optional[Any] = None
-        
+
         self._memory_store: deque[dict] = deque(maxlen=200)
         self._api_key: str = self._resolve_api_key()
 
-        self._has_bq = False
-        self._has_translate = False
-        self._has_firestore = False
-        self._has_secrets = False
-        self._has_storage = False
-        self._has_dlp = False
-        self._has_stt = False
-        self._has_tts = False
-        self._has_maps = False
+        # Lazy-init flags: None = not attempted, True/False = result
+        self._has_bq: Optional[bool] = None
+        self._has_translate: Optional[bool] = None
+        self._has_firestore: Optional[bool] = None
+        self._has_secrets: Optional[bool] = None
+        self._has_storage: Optional[bool] = None
+        self._has_dlp: Optional[bool] = None
+        self._has_stt: Optional[bool] = None
+        self._has_tts: Optional[bool] = None
+        self._has_maps: Optional[bool] = None
 
+        # Lock for thread-safe lazy initialisation
+        self._init_lock = threading.Lock()
+
+        # Eagerly init only critical-path clients
         self._init_clients()
 
     def _init_clients(self) -> None:
-        """Initialize all optional GCP clients safely."""
+        """Initialize core GCP clients eagerly; optional ones are lazy."""
+        # Eagerly init frequently used clients
         try:
             self._bq_client = bigquery.Client()
             self._has_bq = True
-        except Exception: pass
+        except Exception:
+            self._has_bq = False
 
         try:
             self._translate_client = translate.Client()
             self._has_translate = True
-        except Exception: pass
+        except Exception:
+            self._has_translate = False
 
         try:
             self._firestore_db = cloud_firestore.Client()
             self._has_firestore = True
-        except Exception: pass
+        except Exception:
+            self._has_firestore = False
 
         try:
             self._storage_client = cloud_storage.Client()
             self._has_storage = True
-        except Exception: pass
-            
+        except Exception:
+            self._has_storage = False
+
         try:
             secretmanager.SecretManagerServiceClient()
             self._has_secrets = True
-        except Exception: pass
-            
-        try:
-            self._dlp_client = dlp_v2.DlpServiceClient()
-            self._has_dlp = True
-        except Exception: pass
+        except Exception:
+            self._has_secrets = False
 
-        try:
-            self._speech_client = speech.SpeechClient()
-            self._has_stt = True
-        except Exception: pass
+        # Lazy-init these: only used for specific input types
+        # DLP, STT, TTS, Maps — initialized on first use via properties
 
-        try:
-            self._tts_client = texttospeech.TextToSpeechClient()
-            self._has_tts = True
-        except Exception: pass
-        
         if CONFIG.GOOGLE_MAPS_API_KEY:
             try:
                 self._maps_client = googlemaps.Client(key=CONFIG.GOOGLE_MAPS_API_KEY)
                 self._has_maps = True
-            except Exception: pass
+            except Exception:
+                self._has_maps = False
+        else:
+            self._has_maps = False
+
+    def _lazy_init_dlp(self) -> None:
+        """Lazily initialize DLP client on first use."""
+        if self._has_dlp is not None:
+            return
+        with self._init_lock:
+            if self._has_dlp is not None:
+                return
+            try:
+                self._dlp_client = dlp_v2.DlpServiceClient()
+                self._has_dlp = True
+            except Exception:
+                self._has_dlp = False
+
+    def _lazy_init_stt(self) -> None:
+        """Lazily initialize Speech-to-Text client on first use."""
+        if self._has_stt is not None:
+            return
+        with self._init_lock:
+            if self._has_stt is not None:
+                return
+            try:
+                self._speech_client = speech.SpeechClient()
+                self._has_stt = True
+            except Exception:
+                self._has_stt = False
+
+    def _lazy_init_tts(self) -> None:
+        """Lazily initialize Text-to-Speech client on first use."""
+        if self._has_tts is not None:
+            return
+        with self._init_lock:
+            if self._has_tts is not None:
+                return
+            try:
+                self._tts_client = texttospeech.TextToSpeechClient()
+                self._has_tts = True
+            except Exception:
+                self._has_tts = False
 
     def get_service_status(self) -> dict:
         """Returns boolean status of all 12 integrated services."""
+        # Trigger lazy init for status check
+        self._lazy_init_dlp()
+        self._lazy_init_stt()
+        self._lazy_init_tts()
         return {
             "gemini_api": True,
             "cloud_logging": bool(os.environ.get("K_SERVICE")),
-            "secret_manager": self._has_secrets,
-            "firestore": self._has_firestore,
-            "cloud_storage": self._has_storage,
-            "bigquery": self._has_bq,
-            "translate_api": self._has_translate,
-            "dlp_api": self._has_dlp,
-            "speech_to_text": self._has_stt,
-            "text_to_speech": self._has_tts,
-            "google_maps": self._has_maps
+            "secret_manager": bool(self._has_secrets),
+            "firestore": bool(self._has_firestore),
+            "cloud_storage": bool(self._has_storage),
+            "bigquery": bool(self._has_bq),
+            "translate_api": bool(self._has_translate),
+            "dlp_api": bool(self._has_dlp),
+            "speech_to_text": bool(self._has_stt),
+            "text_to_speech": bool(self._has_tts),
+            "google_maps": bool(self._has_maps),
         }
 
     # ── Secret Manager ────────────────────────────────────────────────
@@ -147,21 +206,28 @@ class GoogleServices:
     # ── DLP (Security) ────────────────────────────────────────────────
     def redact_pii(self, text: str) -> str:
         """Uses Cloud DLP to redact PII (names, phones) from medical history."""
+        self._lazy_init_dlp()
         if not self._dlp_client or not CONFIG.GOOGLE_CLOUD_PROJECT:
             return text
-            
+
         try:
             parent = f"projects/{CONFIG.GOOGLE_CLOUD_PROJECT}/locations/global"
             item = {"value": text}
             inspect_config = {
-                "info_types": [{"name": "PERSON_NAME"}, {"name": "PHONE_NUMBER"}, {"name": "EMAIL_ADDRESS"}],
+                "info_types": [
+                    {"name": "PERSON_NAME"},
+                    {"name": "PHONE_NUMBER"},
+                    {"name": "EMAIL_ADDRESS"},
+                ],
                 "min_likelihood": dlp_v2.Likelihood.LIKELY,
             }
             deidentify_config = {
                 "info_type_transformations": {
                     "transformations": [
                         {
-                            "primitive_transformation": {"replace_with_info_type_config": {}}
+                            "primitive_transformation": {
+                                "replace_with_info_type_config": {}
+                            }
                         }
                     ]
                 }
@@ -179,14 +245,17 @@ class GoogleServices:
             return text
 
     # ── Text-to-Speech (TTS Voice Alerts) ──────────────────────────────
-    def generate_voice_alert(self, text: str, language_code: str = "en-IN") -> Optional[bytes]:
+    def generate_voice_alert(
+        self, text: str, language_code: str = "en-IN"
+    ) -> Optional[bytes]:
         """Synthesizes an audio alert for the critical intervention."""
+        self._lazy_init_tts()
         if not self._tts_client:
             return None
-            
+
         try:
             synthesis_input = texttospeech.SynthesisInput(text=text)
-            
+
             # Map common languages to high-quality voices
             voice_name = "en-IN-Wavenet-B"
             if language_code.startswith("hi"):
@@ -195,10 +264,9 @@ class GoogleServices:
             elif language_code.startswith("es"):
                 language_code = "es-US"
                 voice_name = "es-US-Wavenet-B"
-                
+
             voice = texttospeech.VoiceSelectionParams(
-                language_code=language_code,
-                name=voice_name
+                language_code=language_code, name=voice_name
             )
             audio_config = texttospeech.AudioConfig(
                 audio_encoding=texttospeech.AudioEncoding.MP3
@@ -214,35 +282,54 @@ class GoogleServices:
     # ── Speech-to-Text (STT) ──────────────────────────────────────────
     def transcribe_audio(self, local_path: str) -> Optional[str]:
         """Transcribes audio explicitly using Google Cloud Speech-to-Text."""
+        self._lazy_init_stt()
         if not self._speech_client:
             return None
-            
+
         try:
             with open(local_path, "rb") as f:
                 content = f.read()
-                
+
             audio = speech.RecognitionAudio(content=content)
             config = speech.RecognitionConfig(
                 encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
                 sample_rate_hertz=48000,
                 language_code="en-US",
-                alternative_language_codes=["hi-IN", "es-US"]
+                alternative_language_codes=["hi-IN", "es-US"],
             )
-            
+
             response = self._speech_client.recognize(config=config, audio=audio)
-            
-            transcript = " ".join([result.alternatives[0].transcript for result in response.results])
+
+            transcript = " ".join(
+                result.alternatives[0].transcript for result in response.results
+            )
             return transcript.strip() if transcript else None
         except Exception as exc:
             logger.warning("STT transcription failed: %s", exc)
             return None
 
-    # ── Google Maps (Geocoding) ───────────────────────────────────────
-    def geocode_location(self, location_text: str) -> Tuple[Optional[float], Optional[float]]:
-        """Converts an unstructured location string into precise Lat/Lng coords."""
-        if not self._maps_client or not location_text or location_text.lower() == "unknown":
+    # ── Google Maps (Geocoding with LRU Cache) ────────────────────────
+    def geocode_location(
+        self, location_text: str
+    ) -> Tuple[Optional[float], Optional[float]]:
+        """Converts an unstructured location string into precise Lat/Lng coords.
+
+        Results are cached via _cached_geocode to avoid redundant API calls
+        for the same location string seen multiple times.
+        """
+        if (
+            not self._maps_client
+            or not location_text
+            or location_text.lower() == "unknown"
+        ):
             return None, None
-            
+        return self._cached_geocode(location_text)
+
+    @lru_cache(maxsize=128)
+    def _cached_geocode(
+        self, location_text: str
+    ) -> Tuple[Optional[float], Optional[float]]:
+        """LRU-cached geocoding to avoid repeated API calls for same location."""
         try:
             result = self._maps_client.geocode(location_text)
             if result:
@@ -267,9 +354,9 @@ class GoogleServices:
         self._memory_store.appendleft(record)
         if self._firestore_db:
             try:
-                self._firestore_db.collection(CONFIG.FIRESTORE_COLLECTION).document(
-                    record["id"]
-                ).set(record)
+                self._firestore_db.collection(
+                    CONFIG.FIRESTORE_COLLECTION
+                ).document(record["id"]).set(record)
             except Exception as exc:
                 logger.error("Firestore write failed: %s", exc)
 
@@ -278,7 +365,9 @@ class GoogleServices:
             try:
                 docs = (
                     self._firestore_db.collection(CONFIG.FIRESTORE_COLLECTION)
-                    .order_by("timestamp", direction=cloud_firestore.Query.DESCENDING)
+                    .order_by(
+                        "timestamp", direction=cloud_firestore.Query.DESCENDING
+                    )
                     .limit(limit)
                     .stream()
                 )
@@ -291,7 +380,11 @@ class GoogleServices:
         self._memory_store.clear()
         if self._firestore_db:
             try:
-                docs = self._firestore_db.collection(CONFIG.FIRESTORE_COLLECTION).limit(500).stream()
+                docs = (
+                    self._firestore_db.collection(CONFIG.FIRESTORE_COLLECTION)
+                    .limit(500)
+                    .stream()
+                )
                 for doc in docs:
                     doc.reference.delete()
             except Exception:
@@ -302,8 +395,11 @@ class GoogleServices:
         if not self._bq_client or not CONFIG.GOOGLE_CLOUD_PROJECT:
             return
         try:
-            table_id = f"{CONFIG.GOOGLE_CLOUD_PROJECT}.{CONFIG.BIGQUERY_DATASET}.{CONFIG.BIGQUERY_TABLE}"
-            # Ensure safe BQ types
+            table_id = (
+                f"{CONFIG.GOOGLE_CLOUD_PROJECT}."
+                f"{CONFIG.BIGQUERY_DATASET}."
+                f"{CONFIG.BIGQUERY_TABLE}"
+            )
             row = {
                 "incident_id": record["id"],
                 "timestamp": record["timestamp"],
@@ -318,27 +414,69 @@ class GoogleServices:
             pass
 
     # ── Cloud Storage (Signed URLs) ───────────────────────────────────
-    def upload_to_gcs(self, local_path: str, filename: str, content_type: str = "application/octet-stream") -> Tuple[Optional[str], Optional[str]]:
+    def upload_to_gcs(
+        self,
+        local_path: str,
+        filename: str,
+        content_type: str = "application/octet-stream",
+    ) -> Tuple[Optional[str], Optional[str]]:
         """Archives to GCS and returns both the GS URI and a 2-hour Signed URL."""
         if not CONFIG.GCS_BUCKET or not self._storage_client:
             return None, None
-            
+
         try:
             bucket = self._storage_client.bucket(CONFIG.GCS_BUCKET)
-            blob_name = f"uploads/{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')}/{filename}"
+            blob_name = (
+                f"uploads/"
+                f"{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')}/"
+                f"{filename}"
+            )
             blob = bucket.blob(blob_name)
             blob.upload_from_filename(local_path, content_type=content_type)
-            
+
             uri = f"gs://{CONFIG.GCS_BUCKET}/{blob_name}"
-            # Generate signed URL
             signed_url = blob.generate_signed_url(
                 version="v4",
                 expiration=datetime.timedelta(hours=2),
-                method="GET"
+                method="GET",
             )
             return uri, signed_url
         except Exception as exc:
             logger.warning("GCS upload/signing failed: %s", exc)
             return None, None
+
+    def upload_bytes_to_gcs(
+        self,
+        data: bytes,
+        filename: str,
+        content_type: str = "application/octet-stream",
+    ) -> Optional[str]:
+        """Upload in-memory bytes directly to GCS (avoids temp file I/O).
+
+        Returns a signed URL or None on failure.
+        """
+        if not CONFIG.GCS_BUCKET or not self._storage_client:
+            return None
+
+        try:
+            bucket = self._storage_client.bucket(CONFIG.GCS_BUCKET)
+            blob_name = (
+                f"uploads/"
+                f"{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')}/"
+                f"{filename}"
+            )
+            blob = bucket.blob(blob_name)
+            blob.upload_from_string(data, content_type=content_type)
+
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=datetime.timedelta(hours=2),
+                method="GET",
+            )
+            return signed_url
+        except Exception as exc:
+            logger.warning("GCS in-memory upload failed: %s", exc)
+            return None
+
 
 services = GoogleServices()
