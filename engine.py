@@ -128,8 +128,7 @@ def process_file_input(file_path: str, mime_type: str, context: str = "") -> Dic
             config={
                 "system_instruction": SYSTEM_PROMPT,
                 "response_mime_type": "application/json",
-                "response_schema": TriageActionPlan,
-                "tools": [{"google_search": {}}]  # Hackathon Flex: Search Grounding
+                "response_schema": TriageActionPlan
             },
         )
         
