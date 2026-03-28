@@ -31,7 +31,7 @@ class TestHealthEndpoint:
         data = resp.get_json()
         assert data["status"] == "healthy"
         assert data["service"] == "TriageAI"
-        assert data["version"] == "3.0.0"
+        assert data["version"] == "4.0.0"
         assert "timestamp" in data
 
     def test_json_content_type(self, client):
@@ -53,6 +53,10 @@ class TestInfoEndpoint:
         assert "cloud_storage" in data["google_services"]
         assert "bigquery" in data["google_services"]
         assert "translate_api" in data["google_services"]
+        assert "dlp_api" in data["google_services"]
+        assert "speech_to_text" in data["google_services"]
+        assert "text_to_speech" in data["google_services"]
+        assert "google_maps" in data["google_services"]
 
 
 class TestSecurityHeaders:

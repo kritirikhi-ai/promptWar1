@@ -95,6 +95,16 @@
                         </svg>
                         <span>Voice Note</span>
                     </button>
+                    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-document" id="tab-document" data-mode="document">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                        <span>Medical Records</span>
+                    </button>
                 </div>
 
                 <!-- Text Input Panel -->
@@ -221,6 +231,47 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Document Input Panel -->
+                <div class="input-panel" id="panel-document" role="tabpanel" aria-labelledby="tab-document" hidden>
+                    <div class="glass-card">
+                        <div class="upload-zone" id="doc-drop-zone" role="button" tabindex="0" 
+                             aria-label="Click or drag to upload medical history">
+                            <div class="upload-icon" aria-hidden="true">
+                                <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M12 4V44H36V12L28 4H12Z" stroke-linejoin="round"/>
+                                    <path d="M28 4V12H36" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <p class="upload-text">Drag & drop medical records</p>
+                            <p class="upload-hint">PDF, TXT, MD · Max 10MB</p>
+                            <input type="file" id="doc-file-input" accept="application/pdf,text/plain,text/markdown" 
+                                   class="sr-only" aria-label="Upload document file">
+                        </div>
+                        <div class="file-preview audio-file-preview" id="doc-preview" hidden>
+                            <div class="audio-file-info">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="file-icon" aria-hidden="true">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                </svg>
+                                <span id="doc-file-name">records.pdf</span>
+                            </div>
+                            <button class="btn-remove" id="btn-remove-doc" aria-label="Remove document file">✕</button>
+                        </div>
+                        <label for="doc-context" class="input-label mt-16">Additional context (optional)</label>
+                        <input type="text" id="doc-context" class="text-field" 
+                               placeholder="e.g., Patient is unresponsive, need immediate allergy check">
+                        <div class="input-footer">
+                            <span></span>
+                            <button class="btn btn-primary" id="btn-submit-doc" aria-label="Analyze document" disabled>
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                </svg>
+                                Analyze
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- Loading State -->
@@ -250,6 +301,11 @@
                         </div>
                     </div>
                     
+                    <div class="result-voice-alert mt-4" id="result-voice-alert" hidden>
+                        <p class="audio-label">🔊 Auto-Generated Action Voice Alert (TTS):</p>
+                        <audio id="tts-audio-player" controls preload="none"></audio>
+                    </div>
+
                     <div class="result-body">
                         <div class="result-grid">
                             <!-- Input Summary -->
@@ -302,9 +358,10 @@
                                     <svg viewBox="0 0 20 20" fill="currentColor" class="field-icon" aria-hidden="true">
                                         <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
                                     </svg>
-                                    Location
+                                    Location / Exact Coordinates
                                 </h3>
                                 <p class="field-value" id="field-location"></p>
+                                <a id="field-map-link" class="map-link mt-2" href="#" target="_blank" hidden>🗺️ View on Google Maps</a>
                             </div>
 
                             <!-- Resources -->

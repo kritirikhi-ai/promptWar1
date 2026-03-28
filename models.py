@@ -5,7 +5,7 @@ Pydantic schemas for the TriageAI application and custom domain exceptions.
 """
 
 import uuid
-from typing import Any, Dict, List, Literal
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -57,9 +57,13 @@ class TriageActionPlan(BaseModel):
     critical_intervention: str = Field(description="Most urgent action needed")
     recommended_resources: List[str] = Field(description="Specific resources needed like hazmat, ems")
     location_info: str = Field(description="Extracted location details")
+    latitude: Optional[float] = Field(default=None, description="Exact latitude from Google Maps Geocoding")
+    longitude: Optional[float] = Field(default=None, description="Exact longitude from Google Maps Geocoding")
     dispatch_code: str = Field(description="Priority dispatch code (e.g. MCI-R-3)")
     language_detected: str = Field(default="en", description="ISO 639-1 code of original intent")
     raw_input_summary: str = Field(description="Brief English summary of the original text")
+    tts_audio_url: Optional[str] = Field(default=None, description="Signed GCS URL to Voice Alert MP3")
+    stt_transcript: Optional[str] = Field(default=None, description="Raw transcription from Cloud Speech-to-Text")
 
 
 class TriageRecord(BaseModel):
@@ -67,6 +71,7 @@ class TriageRecord(BaseModel):
 
     id: str
     timestamp: str
+    expires_at: str
     input_type: str
     input_preview: str
     result: Dict[str, Any]

@@ -16,8 +16,6 @@ import time
 import uuid
 from datetime import datetime, timezone
 from functools import wraps
-from typing import Dict, List, Optional
-
 from flask import Flask, Response, g, jsonify, request, send_from_directory
 
 from config import CONFIG, APP_VERSION
@@ -198,8 +196,10 @@ def triage_image():
         tmp_path = tmp.name
         
     try:
-        services.upload_to_gcs(tmp_path, f"{uuid.uuid4()}{suffix}")
+        uri, signed_url = services.upload_to_gcs(tmp_path, f"{uuid.uuid4()}{suffix}", content_type=file.content_type)
         result = process_file_input(tmp_path, file.content_type, context)
+        if signed_url:
+            result["source_media_url"] = signed_url
     finally:
         os.unlink(tmp_path)
         
@@ -232,12 +232,50 @@ def triage_audio():
         tmp_path = tmp.name
         
     try:
-        services.upload_to_gcs(tmp_path, f"{uuid.uuid4()}{suffix}")
+        uri, signed_url = services.upload_to_gcs(tmp_path, f"{uuid.uuid4()}{suffix}", content_type=content_type)
         result = process_file_input(tmp_path, content_type, context)
+        if signed_url:
+            result["source_media_url"] = signed_url
     finally:
         os.unlink(tmp_path)
         
     _save_record(result, "audio", "🎤 Audio recording")
+    return jsonify({"success": True, "data": result})
+
+
+@app.route("/api/triage/document", methods=["POST"])
+@rate_limit
+def triage_document():
+    """Process medical history document input."""
+    if "document" not in request.files:
+        raise InputValidationError("Please upload a document file.")
+    file = request.files["document"]
+    content_type = file.content_type or "application/pdf"
+    
+    if content_type not in CONFIG.ALLOWED_DOC_TYPES:
+        raise InputValidationError(f"Allowed types: {', '.join(CONFIG.ALLOWED_DOC_TYPES)}")
+        
+    file.seek(0, 2)
+    if file.tell() / (1024 * 1024) > CONFIG.MAX_FILE_SIZE_MB:
+        raise InputValidationError(f"Max file size is {CONFIG.MAX_FILE_SIZE_MB}MB.")
+    file.seek(0)
+    
+    context = request.form.get("context", "")
+    suffix = os.path.splitext(file.filename or ".pdf")[1] or ".pdf"
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        file.save(tmp.name)
+        tmp_path = tmp.name
+        
+    try:
+        uri, signed_url = services.upload_to_gcs(tmp_path, f"{uuid.uuid4()}{suffix}", content_type=content_type)
+        result = process_file_input(tmp_path, content_type, context)
+        if signed_url:
+            result["source_media_url"] = signed_url
+    finally:
+        os.unlink(tmp_path)
+        
+    _save_record(result, "document", f"📄 {file.filename}")
     return jsonify({"success": True, "data": result})
 
 
@@ -257,9 +295,14 @@ def clear_history():
 
 def _save_record(result: dict, input_type: str, preview: str) -> None:
     """Create and persist a triage record locally and stream to BQ."""
+    import datetime as dt
+    now = datetime.now(timezone.utc)
+    expires_at = now + dt.timedelta(days=30)
+    
     record = {
         "id": result.get("incident_id", str(uuid.uuid4())[:8]),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": now.isoformat(),
+        "expires_at": expires_at.isoformat(),
         "input_type": input_type,
         "input_preview": preview,
         "result": result,

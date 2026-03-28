@@ -47,6 +47,15 @@
         audioContext: $("#audio-context"),
         btnSubmitAudio: $("#btn-submit-audio"),
 
+        // Document
+        docDropZone: $("#doc-drop-zone"),
+        docFileInput: $("#doc-file-input"),
+        docPreview: $("#doc-preview"),
+        docFileName: $("#doc-file-name"),
+        btnRemoveDoc: $("#btn-remove-doc"),
+        docContext: $("#doc-context"),
+        btnSubmitDoc: $("#btn-submit-doc"),
+
         // Loading
         loadingSection: $("#loading-section"),
 
@@ -65,10 +74,13 @@
         fieldIntervention: $("#field-intervention"),
         fieldHazards: $("#field-hazards"),
         fieldLocation: $("#field-location"),
+        fieldMapLink: $("#field-map-link"),
         fieldResources: $("#field-resources"),
         confidenceValue: $("#confidence-value"),
         confidenceFill: $("#confidence-fill"),
         langBadge: $("#lang-badge"),
+        resultVoiceAlert: $("#result-voice-alert"),
+        ttsAudioPlayer: $("#tts-audio-player"),
 
         // History
         historyBody: $("#history-body"),
@@ -87,6 +99,7 @@
     let currentImageFile = null;
     let currentAudioBlob = null;
     let currentAudioFile = null;
+    let currentDocFile = null;
     let mediaRecorder = null;
     let recordingChunks = [];
     let recordingTimer = null;
@@ -433,6 +446,84 @@
     });
 
     // =========================================================================
+    // Document Upload
+    // =========================================================================
+
+    function handleDocFile(file) {
+        if (!file) return;
+        const allowed = ["application/pdf", "text/plain", "text/markdown"];
+        if (!allowed.includes(file.type) && !file.name.endsWith(".pdf")) {
+            showError("Please upload a PDF, TXT, or MD document.");
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            showError("Document must be under 10MB.");
+            return;
+        }
+
+        currentDocFile = file;
+        DOM.docFileName.textContent = file.name;
+        DOM.docPreview.hidden = false;
+        DOM.docDropZone.style.display = "none";
+        DOM.btnSubmitDoc.disabled = false;
+        announce("Document uploaded: " + file.name);
+    }
+
+    DOM.docDropZone.addEventListener("click", () => DOM.docFileInput.click());
+    DOM.docDropZone.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            DOM.docFileInput.click();
+        }
+    });
+
+    DOM.docFileInput.addEventListener("change", () => {
+        handleDocFile(DOM.docFileInput.files[0]);
+    });
+
+    ["dragenter", "dragover"].forEach((evt) => {
+        DOM.docDropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            DOM.docDropZone.classList.add("drag-over");
+        });
+    });
+
+    ["dragleave", "drop"].forEach((evt) => {
+        DOM.docDropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            DOM.docDropZone.classList.remove("drag-over");
+        });
+    });
+
+    DOM.docDropZone.addEventListener("drop", (e) => {
+        handleDocFile(e.dataTransfer.files[0]);
+    });
+
+    DOM.btnRemoveDoc.addEventListener("click", () => {
+        currentDocFile = null;
+        DOM.docPreview.hidden = true;
+        DOM.docDropZone.style.display = "";
+        DOM.docFileInput.value = "";
+        DOM.btnSubmitDoc.disabled = true;
+        announce("Document removed");
+    });
+
+    DOM.btnSubmitDoc.addEventListener("click", () => {
+        if (!currentDocFile) {
+            showError("Please upload a document first.");
+            return;
+        }
+        const formData = new FormData();
+        formData.append("document", currentDocFile);
+        formData.append("context", DOM.docContext.value.trim());
+
+        submitTriage("/api/triage/document", {
+            method: "POST",
+            body: formData,
+        });
+    });
+
+    // =========================================================================
     // API Submission
     // =========================================================================
 
@@ -480,11 +571,32 @@
         DOM.resultTime.textContent = new Date().toLocaleTimeString();
 
         // Fields
-        DOM.fieldSummary.textContent = data.raw_input_summary || "—";
+        let transcriptSummary = data.raw_input_summary || "—";
+        if (data.stt_transcript) {
+            transcriptSummary = `[Auto-Transcription]: ${data.stt_transcript}\n\n[Summary]: ${transcriptSummary}`;
+        }
+        DOM.fieldSummary.textContent = transcriptSummary;
         DOM.patientCount.textContent = data.patient_count ?? "?";
         DOM.fieldVitals.textContent = data.patient_vitals_summary || "—";
         DOM.fieldIntervention.textContent = data.critical_intervention || "—";
-        DOM.fieldLocation.textContent = data.location_info || "Unknown";
+        
+        // Location and Coordinates
+        if (data.latitude && data.longitude) {
+            DOM.fieldLocation.textContent = `${data.location_info} (${data.latitude.toFixed(4)}, ${data.longitude.toFixed(4)})`;
+            DOM.fieldMapLink.href = `https://www.google.com/maps/search/?api=1&query=${data.latitude},${data.longitude}`;
+            DOM.fieldMapLink.hidden = false;
+        } else {
+            DOM.fieldLocation.textContent = data.location_info || "Unknown";
+            DOM.fieldMapLink.hidden = true;
+        }
+
+        // TTS Voice Alert
+        if (data.tts_audio_url) {
+            DOM.ttsAudioPlayer.src = data.tts_audio_url;
+            DOM.resultVoiceAlert.hidden = false;
+        } else {
+            DOM.resultVoiceAlert.hidden = true;
+        }
 
         // Hazard tags
         DOM.fieldHazards.innerHTML = "";

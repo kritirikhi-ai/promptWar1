@@ -13,7 +13,7 @@ import logging
 
 load_dotenv()
 
-APP_VERSION = "3.0.0"
+APP_VERSION = "4.0.0"
 
 _GCP_LOGGING = False
 try:
@@ -52,6 +52,7 @@ class AppConfig:
     BIGQUERY_TABLE: str = os.environ.get("BIGQUERY_TABLE", "incidents")
     GCS_BUCKET: str = os.environ.get("GCS_BUCKET", "")
     GOOGLE_CLOUD_PROJECT: str = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
+    GOOGLE_MAPS_API_KEY: str = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 
     ALLOWED_IMAGE_TYPES: FrozenSet[str] = frozenset(
         {"image/jpeg", "image/png", "image/webp", "image/gif"}
@@ -59,6 +60,9 @@ class AppConfig:
     ALLOWED_AUDIO_TYPES: FrozenSet[str] = frozenset(
         {"audio/webm", "audio/ogg", "audio/wav", "audio/mp3",
          "audio/mpeg", "audio/mp4", "audio/x-m4a"}
+    )
+    ALLOWED_DOC_TYPES: FrozenSet[str] = frozenset(
+        {"application/pdf", "text/plain", "text/markdown"}
     )
 
 

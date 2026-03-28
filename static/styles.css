@@ -1335,3 +1335,31 @@ body {
     .urgency-label.urgency-YELLOW { color: #ffd43b; }
     .urgency-label.urgency-GREEN { color: #51cf66; }
 }
+
+/* Voice Alert & Maps Extensions */
+.result-voice-alert {
+    background: var(--surface-light);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border-left: 4px solid var(--accent-1);
+}
+
+.map-link {
+    display: inline-block;
+    font-size: 0.85rem;
+    color: var(--accent-1);
+    text-decoration: none;
+    font-weight: 600;
+}
+.map-link:hover {
+    text-decoration: underline;
+}
+
+#tts-audio-player {
+    width: 100%;
+    height: 36px;
+    border-radius: 4px;
+}
