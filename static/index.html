@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="TriageAI — AI-powered Mass Casualty & Disaster Triage system. Converts chaotic emergency inputs into structured START triage data for first responders.">
+    <meta name="theme-color" content="#0a0e1a">
+    <title>TriageAI — Disaster Triage System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <!-- Skip navigation for accessibility -->
+    <a href="#main-content" class="skip-link" id="skip-nav">Skip to main content</a>
+    
+    <!-- Ambient background effects -->
+    <div class="ambient-bg" aria-hidden="true">
+        <div class="ambient-orb orb-1"></div>
+        <div class="ambient-orb orb-2"></div>
+        <div class="ambient-orb orb-3"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="app-header" role="banner">
+        <div class="header-inner">
+            <div class="logo-group">
+                <div class="logo-icon" aria-hidden="true">
+                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 2L36 11V29L20 38L4 29V11L20 2Z" stroke="url(#logoGrad)" stroke-width="2" fill="none"/>
+                        <path d="M20 10V30M12 15H28M12 25H28" stroke="url(#logoGrad)" stroke-width="2" stroke-linecap="round"/>
+                        <defs>
+                            <linearGradient id="logoGrad" x1="4" y1="2" x2="36" y2="38">
+                                <stop stop-color="#60a5fa"/>
+                                <stop offset="1" stop-color="#a78bfa"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="logo-text">TriageAI</h1>
+                    <p class="logo-sub">Mass Casualty Triage System</p>
+                </div>
+            </div>
+            <div class="header-status">
+                <div class="status-dot" id="status-indicator" aria-label="System status: online"></div>
+                <span class="status-text" id="status-text">System Online</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <main id="main-content" role="main">
+        <div class="container">
+            
+            <!-- Hero / intro -->
+            <section class="hero" aria-label="Introduction">
+                <h2 class="hero-title">
+                    Convert <span class="text-gradient">Chaos</span> into <span class="text-gradient">Clarity</span>
+                </h2>
+                <p class="hero-desc">
+                    Submit frantic text reports, blurry photos, or audio recordings — TriageAI instantly classifies 
+                    them using the <strong>START triage protocol</strong> to help first responders save lives.
+                </p>
+            </section>
+
+            <!-- Input Section -->
+            <section class="input-section" aria-label="Emergency input">
+                <!-- Input mode tabs -->
+                <div class="input-tabs" role="tablist" aria-label="Input type selection">
+                    <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-text" id="tab-text" data-mode="text">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                        <span>Text Report</span>
+                    </button>
+                    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-image" id="tab-image" data-mode="image">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        <span>Photo Upload</span>
+                    </button>
+                    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-audio" id="tab-audio" data-mode="audio">
+                        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                        <span>Voice Note</span>
+                    </button>
+                </div>
+
+                <!-- Text Input Panel -->
+                <div class="input-panel active" id="panel-text" role="tabpanel" aria-labelledby="tab-text">
+                    <div class="glass-card">
+                        <label for="text-input" class="input-label">Describe the emergency situation</label>
+                        <textarea 
+                            id="text-input" 
+                            class="text-area" 
+                            placeholder="e.g., Bus flipped on Highway 101. 20 people, most walking. One woman not breathing. Smell of gas. Power lines down nearby..."
+                            rows="5"
+                            maxlength="5000"
+                            aria-describedby="text-hint"
+                        ></textarea>
+                        <div class="input-footer">
+                            <span class="char-count" id="text-hint" aria-live="polite">
+                                <span id="char-count">0</span> / 5,000
+                            </span>
+                            <button class="btn btn-primary" id="btn-submit-text" aria-label="Analyze text report">
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                </svg>
+                                Analyze
+                            </button>
+                        </div>
+
+                        <!-- Quick scenario buttons -->
+                        <div class="quick-scenarios">
+                            <span class="quick-label">Quick test scenarios:</span>
+                            <div class="scenario-chips">
+                                <button class="chip" data-scenario="Subway crash at 42nd st. Smoke everywhere. One victim bleeding from arm, unconscious. I see a downed power line.">🚇 Subway crash</button>
+                                <button class="chip" data-scenario="¡Ayuda! Hubo una explosión en la cocina. Mi compañero no puede respirar por el humo.">🔥 Kitchen explosion (ES)</button>
+                                <button class="chip" data-scenario="ALARM_ID: 992. TEMP: 105C. SMOKE: POSITIVE. 2 technicians trapped in server room.">🤖 IoT sensor alert</button>
+                                <button class="chip" data-scenario="Bus flipped. 20 people. Most walking. One woman not breathing. One kid with broken leg.">🚌 Bus accident MCI</button>
+                                <button class="chip" data-scenario="Can't talk. Hiding in closet. 3rd floor, Apt 4B. Smelling gas.">🏠 Gas leak / trapped</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Input Panel -->
+                <div class="input-panel" id="panel-image" role="tabpanel" aria-labelledby="tab-image" hidden>
+                    <div class="glass-card">
+                        <div class="upload-zone" id="image-drop-zone" role="button" tabindex="0" 
+                             aria-label="Click or drag to upload an emergency scene photo">
+                            <div class="upload-icon" aria-hidden="true">
+                                <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <rect x="6" y="6" width="36" height="36" rx="4"/>
+                                    <circle cx="17" cy="17" r="3"/>
+                                    <path d="M42 30L33 21L12 42"/>
+                                    <path d="M24 16V32M16 24h16" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <p class="upload-text">Drag & drop an emergency scene photo</p>
+                            <p class="upload-hint">or click to browse · JPG, PNG, WebP · Max 10MB</p>
+                            <input type="file" id="image-file-input" accept="image/jpeg,image/png,image/webp,image/gif" 
+                                   class="sr-only" aria-label="Upload image file">
+                        </div>
+                        <div class="file-preview" id="image-preview" hidden>
+                            <img id="image-preview-img" alt="Uploaded emergency scene preview">
+                            <button class="btn-remove" id="btn-remove-image" aria-label="Remove uploaded image">✕</button>
+                        </div>
+                        <label for="image-context" class="input-label mt-16">Additional context (optional)</label>
+                        <input type="text" id="image-context" class="text-field" 
+                               placeholder="e.g., Photo taken at corner of 5th and Main, two minutes ago">
+                        <div class="input-footer">
+                            <span></span>
+                            <button class="btn btn-primary" id="btn-submit-image" aria-label="Analyze image" disabled>
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                </svg>
+                                Analyze
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audio Input Panel -->
+                <div class="input-panel" id="panel-audio" role="tabpanel" aria-labelledby="tab-audio" hidden>
+                    <div class="glass-card">
+                        <div class="audio-controls">
+                            <button class="btn-record" id="btn-record" aria-label="Start recording voice note">
+                                <div class="record-circle" aria-hidden="true"></div>
+                                <span id="record-label">Start Recording</span>
+                            </button>
+                            <div class="record-timer" id="record-timer" aria-live="polite" hidden>
+                                <span class="timer-dot" aria-hidden="true"></span>
+                                <span id="timer-display">00:00</span>
+                            </div>
+                        </div>
+                        <div class="audio-divider">
+                            <span>or upload an audio file</span>
+                        </div>
+                        <div class="upload-zone upload-zone-sm" id="audio-drop-zone" role="button" tabindex="0"
+                             aria-label="Click or drag to upload an audio recording">
+                            <p class="upload-text">Drop audio file here or click to browse</p>
+                            <p class="upload-hint">WebM, WAV, MP3, OGG · Max 10MB</p>
+                            <input type="file" id="audio-file-input" accept="audio/*" 
+                                   class="sr-only" aria-label="Upload audio file">
+                        </div>
+                        <div class="file-preview audio-file-preview" id="audio-preview" hidden>
+                            <div class="audio-file-info">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="file-icon" aria-hidden="true">
+                                    <path d="M9 18V5l12-2v13"/>
+                                    <circle cx="6" cy="18" r="3"/>
+                                    <circle cx="18" cy="16" r="3"/>
+                                </svg>
+                                <span id="audio-file-name">recording.webm</span>
+                            </div>
+                            <audio id="audio-player" controls></audio>
+                            <button class="btn-remove" id="btn-remove-audio" aria-label="Remove audio file">✕</button>
+                        </div>
+                        <label for="audio-context" class="input-label mt-16">Additional context (optional)</label>
+                        <input type="text" id="audio-context" class="text-field" 
+                               placeholder="e.g., Caller was panicking, background sounds of sirens">
+                        <div class="input-footer">
+                            <span></span>
+                            <button class="btn btn-primary" id="btn-submit-audio" aria-label="Analyze audio" disabled>
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                </svg>
+                                Analyze
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Loading State -->
+            <section class="loading-section" id="loading-section" hidden aria-label="Processing">
+                <div class="glass-card loading-card">
+                    <div class="loading-spinner" aria-hidden="true">
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                    </div>
+                    <p class="loading-text" aria-live="assertive">Analyzing emergency data...</p>
+                    <p class="loading-sub">Running START triage protocol</p>
+                </div>
+            </section>
+
+            <!-- Triage Result Card -->
+            <section class="result-section" id="result-section" hidden aria-label="Triage result">
+                <div class="result-card" id="result-card">
+                    <div class="result-header" id="result-header">
+                        <div class="urgency-badge" id="urgency-badge">
+                            <span class="urgency-label" id="urgency-label">RED</span>
+                            <span class="urgency-desc" id="urgency-desc">IMMEDIATE</span>
+                        </div>
+                        <div class="result-meta">
+                            <span class="dispatch-code" id="dispatch-code">MCI-R-1</span>
+                            <span class="result-time" id="result-time"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="result-body">
+                        <div class="result-grid">
+                            <!-- Input Summary -->
+                            <div class="result-field">
+                                <h3 class="field-label">
+                                    <svg viewBox="0 0 20 20" fill="currentColor" class="field-icon" aria-hidden="true">
+                                        <path d="M2 5a2 2 0 012-2h7l2 2h5a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V5z"/>
+                                    </svg>
+                                    Input Summary
+                                </h3>
+                                <p class="field-value" id="field-summary"></p>
+                            </div>
+
+                            <!-- Patient Info -->
+                            <div class="result-field">
+                                <h3 class="field-label">
+                                    <svg viewBox="0 0 20 20" fill="currentColor" class="field-icon" aria-hidden="true">
+                                        <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+                                    </svg>
+                                    Patients (<span id="patient-count">0</span>)
+                                </h3>
+                                <p class="field-value" id="field-vitals"></p>
+                            </div>
+
+                            <!-- Critical Intervention -->
+                            <div class="result-field result-field-highlight">
+                                <h3 class="field-label">
+                                    <svg viewBox="0 0 20 20" fill="currentColor" class="field-icon" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Critical Intervention
+                                </h3>
+                                <p class="field-value" id="field-intervention"></p>
+                            </div>
+
+                            <!-- Hazards -->
+                            <div class="result-field">
+                                <h3 class="field-label">
+                                    <svg viewBox="0 0 20 20" fill="currentColor" class="field-icon" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Hazard Alerts
+                                </h3>
+                                <div class="hazard-tags" id="field-hazards"></div>
+                            </div>
+
+                            <!-- Location -->
+                            <div class="result-field">
+                                <h3 class="field-label">
+                                    <svg viewBox="0 0 20 20" fill="currentColor" class="field-icon" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Location
+                                </h3>
+                                <p class="field-value" id="field-location"></p>
+                            </div>
+
+                            <!-- Resources -->
+                            <div class="result-field">
+                                <h3 class="field-label">
+                                    <svg viewBox="0 0 20 20" fill="currentColor" class="field-icon" aria-hidden="true">
+                                        <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
+                                        <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1v-1h3.05a2.5 2.5 0 014.9 0H19a1 1 0 001-1v-5a1 1 0 00-.3-.7l-4-4A1 1 0 0015 4H3z"/>
+                                    </svg>
+                                    Recommended Resources
+                                </h3>
+                                <div class="resource-tags" id="field-resources"></div>
+                            </div>
+                        </div>
+
+                        <!-- Confidence meter -->
+                        <div class="confidence-bar">
+                            <div class="confidence-label">
+                                <span>AI Confidence</span>
+                                <span id="confidence-value">85%</span>
+                            </div>
+                            <div class="confidence-track">
+                                <div class="confidence-fill" id="confidence-fill" role="progressbar" 
+                                     aria-valuenow="85" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+
+                        <!-- Language detected -->
+                        <div class="result-footer">
+                            <span class="lang-badge" id="lang-badge">EN</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Incident History Dashboard -->
+            <section class="history-section" aria-label="Incident history">
+                <div class="section-header">
+                    <h2 class="section-title">Incident Dashboard</h2>
+                    <div class="section-actions">
+                        <span class="incident-count" id="incident-count" aria-live="polite">0 incidents</span>
+                        <button class="btn btn-ghost" id="btn-clear-history" aria-label="Clear all incident history">
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+                <div class="history-table-wrap">
+                    <table class="history-table" id="history-table" aria-label="Triage incident records">
+                        <thead>
+                            <tr>
+                                <th scope="col">Urgency</th>
+                                <th scope="col">Dispatch</th>
+                                <th scope="col">Input</th>
+                                <th scope="col">Patients</th>
+                                <th scope="col">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-body">
+                            <tr class="empty-row">
+                                <td colspan="5">
+                                    <div class="empty-state">
+                                        <p>No incidents processed yet.</p>
+                                        <p class="empty-hint">Submit an emergency report above to begin triage.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer" role="contentinfo">
+        <p>TriageAI — Powered by Google Gemini & Cloud Run · START Triage Protocol · Hackathon 2026</p>
+    </footer>
+
+    <!-- Live region for screen readers -->
+    <div id="sr-announcer" class="sr-only" aria-live="assertive" role="status"></div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
