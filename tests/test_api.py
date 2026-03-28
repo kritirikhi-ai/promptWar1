@@ -10,7 +10,8 @@ import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from main import app, TriageError, InputValidationError, AIProcessingError
+from main import app
+from models import TriageError, InputValidationError, AIProcessingError
 
 
 @pytest.fixture
@@ -30,7 +31,7 @@ class TestHealthEndpoint:
         data = resp.get_json()
         assert data["status"] == "healthy"
         assert data["service"] == "TriageAI"
-        assert data["version"] == "2.0.0"
+        assert data["version"] == "3.0.0"
         assert "timestamp" in data
 
     def test_json_content_type(self, client):
@@ -50,6 +51,8 @@ class TestInfoEndpoint:
         assert "secret_manager" in data["google_services"]
         assert "firestore" in data["google_services"]
         assert "cloud_storage" in data["google_services"]
+        assert "bigquery" in data["google_services"]
+        assert "translate_api" in data["google_services"]
 
 
 class TestSecurityHeaders:
